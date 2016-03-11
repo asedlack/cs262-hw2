@@ -1,0 +1,6 @@
+Lab Notes!
+
+To start, high level thinking is that we can set up a single, pretty straightforward C program that will do everything we want.  We'll have some parameters to specify at runtime maybe, in order to specify number of machines to simulate, etc.  Then when we boot things up, simply do any sort of initialization necessary, then fork off procs for each machine to simulate.  As we fork off, we can just keep track of pipes to facilitate inter-proc comms, and then have each simulation proc do it's thing and print to a central log.  Lets see how this goes.
+
+So a first thought is after spawning off the correct number of procs (at first 3, then a number set by args), the parent proc will exit, but all the children need to be able to communicate.  The easiest solution might be something to the tune of "int pipefd[2][n]" in the parent, where n is the number of procs to spawn.  Then, upon spawning, each child will immediately close all read ends except it's own (we can preset "n" as a variable in each proc before forking) and then it can write to the write ends as it pleases throughout.  Let see if this bit works.
+
