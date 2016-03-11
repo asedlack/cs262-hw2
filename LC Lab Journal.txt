@@ -4,3 +4,6 @@ To start, high level thinking is that we can set up a single, pretty straightfor
 
 So a first thought is after spawning off the correct number of procs (at first 3, then a number set by args), the parent proc will exit, but all the children need to be able to communicate.  The easiest solution might be something to the tune of "int pipefd[2][n]" in the parent, where n is the number of procs to spawn.  Then, upon spawning, each child will immediately close all read ends except it's own (we can preset "n" as a variable in each proc before forking) and then it can write to the write ends as it pleases throughout.  Let see if this bit works.
 
+After reviewing some pipe details, I seem to have the proc spawning initialized and working.  The only problem is debugging is getting cumbersome since it is hard to tell which proc will be able to print to the terminal, so I'm thinking I'll redirect all the procs' and the parent's stderr to some error log file.
+
+(NOTE: Also discovered there is apparently some proc vital to my linux setup called "sim" which was the original name of my program.  This lead to terrible problems.  It is now called lcsim.c)
