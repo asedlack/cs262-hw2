@@ -64,16 +64,13 @@ int main (int argc, char** argv) // Return -1 on error
 
 	for (n = 0; n < NPROCS; n++)
 	{
-		if (pipe(pipefd[n]) == -1)
+		if (pipe2(pipefd[n], O_NONBLOCK) == -1)
 		{
 			fprintf(stderr, "Pipe creation failed.  Terminating spawner.\n");
 			return -1;
 		}
-		flags = fcntl(pipefd[0][n], F_GETFL) | O_NONBLOCK;
-		fcntl(pipefd[0][n], F_SETFL, flags);
-		flags = fcntl(pipefd[1][n], F_GETFL) | O_NONBLOCK;
-		fcntl(pipefd[1][n], F_SETFL, flags);
 		hz[n] = (rand() % 6) + 1;
+		fprintf(stderr, "Pipe %d read is %d and write is %d\n", n, pipefd[0][n], pipefd[1][n]);
 	}
 
 	//Now we'll initiallize each proc before handing it off to clock()
