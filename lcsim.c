@@ -64,7 +64,7 @@ int main (int argc, char** argv) // Return -1 on error
 
 	for (n = 0; n < NPROCS; n++)
 	{
-		if (pipe2(pipefd[n], O_NONBLOCK) == -1)
+		if (pipe(pipefd[n]) == -1)
 		{
 			fprintf(stderr, "Pipe creation failed.  Terminating spawner.\n");
 			return -1;
