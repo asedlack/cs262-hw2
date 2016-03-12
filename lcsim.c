@@ -12,7 +12,7 @@
 Block comment hurray!
 **/
 
-int lclock(int n, int hz, int pipefd[2][NPROCS])
+int lclock(int n, int hz, int pipefd[][NPROCS])
 {
 	char logname[10];
 	sprintf(logname, "proc%d.log", n);
@@ -24,7 +24,7 @@ int lclock(int n, int hz, int pipefd[2][NPROCS])
 	time_t start_time = time(0);
 	int logical_clock = 0;
 
-	fprintf(stderr, "Machine %d has PID %ld and clockspeed %d Hz\n", n, getpid(), hz);
+	fprintf(stderr, "Machine %d has PID %d and clockspeed %d Hz\n", n, getpid(), hz);
 	fprintf(stderr, "The current time is %ld\n", time(0));
 
 	char buf[5];
@@ -39,7 +39,6 @@ int lclock(int n, int hz, int pipefd[2][NPROCS])
 	while (time(0) < (start_time + NSEC))
 	{
 		fprintf(stderr, "Time is now %ld\n", time(0));
-
 		int stat = read(pipefd[0][n], buf, 5);
 
 		if (stat != -1){
@@ -48,15 +47,11 @@ int lclock(int n, int hz, int pipefd[2][NPROCS])
 
 		usleep(1000000 / hz);
 	}
-	
 
-
-
-	
 	return 0;
 }
 
-int main (int argc, char** argv)	//Return -1 on error
+int main (int argc, char** argv) // Return -1 on error
 {
 	//fprintf(stderr, "Woohoo, here goes the spawner with pid %ld\n", (long) getpid());
 	int pipefd[2][NPROCS];	//Store our system of pips for IPC
@@ -88,7 +83,7 @@ int main (int argc, char** argv)	//Return -1 on error
 		
 		pid = fork();
 
-		if (pid == 0)	//I'm a child
+		if (pid == 0) // I'm a child
 		{
 			fprintf(stderr, "New proc with pid %ld\n", (long) getpid());
 			
