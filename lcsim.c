@@ -8,11 +8,7 @@
 #define NPROCS 3
 #define NSEC 10
 
-/**
-Block comment hurray!
-**/
-
-int lclock(int n, int hz, int pipefd[][])
+int lclock(int n, int hz, int pipefd[][NPROCS])
 {
 	char logname[10];
 	sprintf(logname, "proc%d.log", n);
@@ -24,7 +20,7 @@ int lclock(int n, int hz, int pipefd[][])
 	time_t start_time = time(0);
 	int logical_clock = 0;
 
-	fprintf(stderr, "Machine %d has PID %ld and clockspeed %d Hz\n", n, getpid(), hz);
+	fprintf(stderr, "Machine %d has PID %d and clockspeed %d Hz\n", n, getpid(), hz);
 	fprintf(stderr, "The current time is %ld\n", time(0));
 
 	char buf[5];
@@ -37,25 +33,18 @@ int lclock(int n, int hz, int pipefd[][])
 	while (time(0) < (start_time + NSEC))
 	{
 		fprintf(stderr, "Time is now %ld\n", time(0));
-
-
-
 		usleep(1000000 / hz);
 	}
-	
 
-
-
-	
 	return 0;
 }
 
-int main (int argc, char** argv)	//Return -1 on error
+int main (int argc, char** argv) // Return -1 on error
 {
 	//fprintf(stderr, "Woohoo, here goes the spawner with pid %ld\n", (long) getpid());
-	int num_proc = NPROCS;	//Normally set by the sim arguments
-	int pipefd[2][num_proc];	//Store our system of pips for IPC
-	int hz[num_proc];
+	int num_proc = NPROCS; // Normally set by the sim arguments
+	int pipefd[2][num_proc]; // Store our system of pips for IPC
+	int hz[num_proc];  // Store frequency of clocks
 
 	pid_t pid;
 	int n, i, flags;
@@ -83,7 +72,7 @@ int main (int argc, char** argv)	//Return -1 on error
 		
 		pid = fork();
 
-		if (pid == 0)	//I'm a child
+		if (pid == 0) // I'm a child
 		{
 			fprintf(stderr, "New proc with pid %ld\n", (long) getpid());
 			
