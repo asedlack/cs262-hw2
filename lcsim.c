@@ -12,7 +12,7 @@
 Block comment hurray!
 **/
 
-int lclock(int n, int hz, int pipefd[][NPROCS])
+int lclock(int n, int hz, int pipefd[][2])
 {
 	char logname[10];
 	sprintf(logname, "proc%d.log", n);
@@ -32,14 +32,14 @@ int lclock(int n, int hz, int pipefd[][NPROCS])
 	int stat = write(pipefd[1][1], "hello", 5);
 	fprintf(stderr, "Just wrote, stat is %d\n", stat);
 	
-	stat = read(pipefd[0][1], buf, 5);
+	stat = read(pipefd[1][0], buf, 5);
 	fprintf(stderr, "Just read, statu is %d\n", stat);
 
 
 	while (time(0) < (start_time + NSEC))
 	{
 		fprintf(stderr, "Time is now %ld\n", time(0));
-		int stat = read(pipefd[0][n], buf, 5);
+		int stat = read(pipefd[n][0], buf, 5);
 
 		if (stat != -1){
 			fprintf(stderr, "Just read, stat is %d and buf is currently %s\n", stat, buf);
@@ -54,7 +54,7 @@ int lclock(int n, int hz, int pipefd[][NPROCS])
 int main (int argc, char** argv) // Return -1 on error
 {
 	//fprintf(stderr, "Woohoo, here goes the spawner with pid %ld\n", (long) getpid());
-	int pipefd[2][NPROCS];	//Store our system of pips for IPC
+	int pipefd[NPROCS][2];	//Store our system of pips for IPC
 	int hz[NPROCS];
 
 	pid_t pid;
@@ -70,12 +70,12 @@ int main (int argc, char** argv) // Return -1 on error
 			return -1;
 		}
 		flags = fcntl(pipefd[0][n], F_GETFL) | O_NONBLOCK;
- +		fcntl(pipefd[0][n], F_SETFL, flags);
- +		flags = fcntl(pipefd[1][n], F_GETFL) | O_NONBLOCK;
- +		fcntl(pipefd[1][n], F_SETFL, flags);
+		fcntl(pipefd[0][n], F_SETFL, flags);
+		flags = fcntl(pipefd[1][n], F_GETFL) | O_NONBLOCK;
+		fcntl(pipefd[1][n], F_SETFL, flags);
  
 		hz[n] = (rand() % 6) + 1;
-		fprintf(stderr, "Pipe %d read is %d and write is %d\n", n, pipefd[0][n], pipefd[1][n]);
+		fprintf(stderr, "Pipe %d read is %d and write is %d\n", n, pipefd[n][0], pipefd[n][1]);
 	}
 
 	//Now we'll initiallize each proc before handing it off to clock()
@@ -89,12 +89,14 @@ int main (int argc, char** argv) // Return -1 on error
 		{
 			fprintf(stderr, "New proc with pid %ld\n", (long) getpid());
 			
+
+			//close uneccesaary connections
 			for (i = 0; i < NPROCS; i++){
 				if (i != n){
-					close(pipefd[0][i]);
+					close(pipefd[i][0]);
 				}
 			}
-			close(pipefd[1][n]);
+			close(pipefd[n][1]);
 			
 			lclock(n, hz[n], pipefd);
 			return 0;
@@ -111,8 +113,8 @@ int main (int argc, char** argv) // Return -1 on error
 	
 	for (i = 0; i < NPROCS; i++)
 	{
-		close(pipefd[0][i]);
-		close(pipefd[1][i]);
+		close(pipefd[i][0]);
+		close(pipefd[i][1]);
 	}
 
     return 0;
