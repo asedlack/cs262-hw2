@@ -7,16 +7,22 @@
 
 #define NPROCS 3
 #define NSEC 4
-
+#define MAX_CLOCK_FREQUENCY 6
+#define MESSAGE_SIZE 8
 /**
 Block comment hurray!
 **/
 
-int lclock(int n, int hz, int pipefd[][2])
+int lclock(int n, int hz, int pipefd[][2], int seed)
 {
-	char logname[10];
-	sprintf(logname, "proc%d.log", n);
-	FILE * log = fopen(logname, "w");
+	srand(seed);
+	int received[NSEC * NPROCS * MAX_CLOCK_FREQUENCY];
+	int queue_start = 0;
+	int queue_end = 0;
+
+	char log_filename[10];
+	sprintf(log_filename, "proc%d.log", n);
+	FILE * log = fopen(log_filename, "w");
 	
 	dup2(fileno(log), STDIN_FILENO);
 	dup2(fileno(log), STDERR_FILENO);
@@ -27,24 +33,17 @@ int lclock(int n, int hz, int pipefd[][2])
 	fprintf(stderr, "Machine %d has PID %d and clockspeed %d Hz\n", n, getpid(), hz);
 	fprintf(stderr, "The current time is %ld\n", time(0));
 
-	char buf[5];
-
-	int stat = write(pipefd[1][1], "hello", 5);
-	fprintf(stderr, "Just wrote, stat is %d\n", stat);
-	
-	stat = read(pipefd[1][0], buf, 5);
-	fprintf(stderr, "Just read, statu is %d\n", stat);
-
+	char buf[MESSAGE_SIZE];
 
 	while (time(0) < (start_time + NSEC))
 	{
-		fprintf(stderr, "Time is now %ld\n", time(0));
-		int stat = read(pipefd[n][0], buf, 5);
-
-		if (stat != -1){
-			fprintf(stderr, "Just read, stat is %d and buf is currently %s\n", stat, buf);
+		write(pipefd[1][1], "10", MESSAGE_SIZE);
+		while(read(pipefd[n][0], buf, MESSAGE_SIZE) != -1){
+			received[queue_end] = atoi(buf);
+			fprintf(stderr, "Just read %d\n", received[queue_end]);
+			queue_end ++;
 		}
-
+		fprintf(stderr, "Time is now %ld\n", time(0));
 		usleep(1000000 / hz);
 	}
 
@@ -60,7 +59,8 @@ int main (int argc, char** argv) // Return -1 on error
 	pid_t pid;
 	int n, i, flags;
 
-	srand((int)time(NULL) ^ (getpid()<<8));
+	srand((int)time(NULL));
+	int child_seeds[NPROCS];
 
 	for (n = 0; n < NPROCS; n++)
 	{
@@ -74,8 +74,10 @@ int main (int argc, char** argv) // Return -1 on error
 		flags = fcntl(pipefd[1][n], F_GETFL) | O_NONBLOCK;
 		fcntl(pipefd[1][n], F_SETFL, flags);
  
-		hz[n] = (rand() % 6) + 1;
+		hz[n] = (rand() % MAX_CLOCK_FREQUENCY) + 1;
 		fprintf(stderr, "Pipe %d read is %d and write is %d\n", n, pipefd[n][0], pipefd[n][1]);
+
+		child_seeds[n] = (int) rand();
 	}
 
 	//Now we'll initiallize each proc before handing it off to clock()
@@ -98,7 +100,7 @@ int main (int argc, char** argv) // Return -1 on error
 			}
 			close(pipefd[n][1]);
 			
-			lclock(n, hz[n], pipefd);
+			lclock(n, hz[n], pipefd, child_seeds[n]);
 			return 0;
 		
 			fprintf(stderr, "WE SHOULD NEVER BE HERE\n");
