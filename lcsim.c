@@ -6,13 +6,13 @@
 #include <fcntl.h>
 
 #define NPROCS 3
-#define NSEC 10
+#define NSEC 4
 
 /**
 Block comment hurray!
 **/
 
-int lclock(int n, int hz, int pipefd[][])
+int lclock(int n, int hz, int pipefd[2][NPROCS])
 {
 	char logname[10];
 	sprintf(logname, "proc%d.log", n);
@@ -29,16 +29,22 @@ int lclock(int n, int hz, int pipefd[][])
 
 	char buf[5];
 
-	if (n == 0){
-		write(pipefd[1][1], "hello", 5);
-	}
+	int stat = write(pipefd[1][1], "hello", 5);
+	fprintf(stderr, "Just wrote, stat is %d\n", stat);
+	
+	stat = read(pipefd[0][1], buf, 5);
+	fprintf(stderr, "Just read, statu is %d\n", stat);
 
 
 	while (time(0) < (start_time + NSEC))
 	{
 		fprintf(stderr, "Time is now %ld\n", time(0));
 
+		int stat = read(pipefd[0][n], buf, 5);
 
+		if (stat != -1){
+			fprintf(stderr, "Just read, stat is %d and buf is currently %s\n", stat, buf);
+		}
 
 		usleep(1000000 / hz);
 	}
@@ -53,16 +59,15 @@ int lclock(int n, int hz, int pipefd[][])
 int main (int argc, char** argv)	//Return -1 on error
 {
 	//fprintf(stderr, "Woohoo, here goes the spawner with pid %ld\n", (long) getpid());
-	int num_proc = NPROCS;	//Normally set by the sim arguments
-	int pipefd[2][num_proc];	//Store our system of pips for IPC
-	int hz[num_proc];
+	int pipefd[2][NPROCS];	//Store our system of pips for IPC
+	int hz[NPROCS];
 
 	pid_t pid;
 	int n, i, flags;
 
 	srand((int)time(NULL) ^ (getpid()<<8));
 
-	for (n = 0; n < num_proc; n++)
+	for (n = 0; n < NPROCS; n++)
 	{
 		if (pipe(pipefd[n]) == -1)
 		{
@@ -77,7 +82,7 @@ int main (int argc, char** argv)	//Return -1 on error
 	}
 
 	//Now we'll initiallize each proc before handing it off to clock()
-	for (n = 0; n < num_proc; n++)
+	for (n = 0; n < NPROCS; n++)
 	{
 		fprintf(stderr, "Now runing on number: %d\n", n);
 		
@@ -87,7 +92,7 @@ int main (int argc, char** argv)	//Return -1 on error
 		{
 			fprintf(stderr, "New proc with pid %ld\n", (long) getpid());
 			
-			for (i = 0; i < num_proc; i++){
+			for (i = 0; i < NPROCS; i++){
 				if (i != n){
 					close(pipefd[0][i]);
 				}
@@ -107,7 +112,7 @@ int main (int argc, char** argv)	//Return -1 on error
 
 	}
 	
-	for (i = 0; i < num_proc; i++)
+	for (i = 0; i < NPROCS; i++)
 	{
 		close(pipefd[0][i]);
 		close(pipefd[1][i]);
