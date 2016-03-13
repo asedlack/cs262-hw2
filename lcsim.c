@@ -37,7 +37,6 @@ int lclock(int n, int hz, int pipefd[][2], int seed)
 
 	while (time(0) < (start_time + NSEC))
 	{
-		write(pipefd[1][1], "10", MESSAGE_SIZE);
 		while(read(pipefd[n][0], buf, MESSAGE_SIZE) != -1){
 			received[queue_end] = atoi(buf);
 			fprintf(stderr, "Just read %d\n", received[queue_end]);
@@ -46,7 +45,12 @@ int lclock(int n, int hz, int pipefd[][2], int seed)
 
 		if (queue_start < queue_end)
 		{
-			//take message off queue, update lc, log message recieve, log global time, log queue size, and log lc time
+			int message_timestamp = received[queue_start];
+			logical_clock = logical_clock > message_timestamp ? logical_clock : message_timestamp;
+			logical_clock++;
+			queue_start++;
+			int queue_size = queue_end - queue_start;
+			fprintf(stdout, "EVENT[%ld]: Proc %d just recieved a message.  The new logical clock is %d and the queue size is now %d\n", time(0), n, logical_clock, queue_size);
 		}
 		else
 		{
@@ -57,20 +61,20 @@ int lclock(int n, int hz, int pipefd[][2], int seed)
 				int recipient = (n + spinner) % NPROCS;
 				snprintf(buf, sizeof(buf), "%d", logical_clock);
 				write(pipefd[recipient][1], buf, MESSAGE_SIZE);
-				sprintf(stderr, "EVENT[%ld]: Proc %d sent to proc %d the current logical clock time %d\n", time(), n, recipient, logical_clock);
+				fprintf(stdout, "EVENT[%ld]: Proc %d sent to proc %d the current logical clock time %d\n", time(0), n, recipient, logical_clock);
 			}
 			else if (spinner == 3)
 			{
 				int recipient1 = (n + 1) % NPROCS;
-				int recpiient2 = (n + 2) % NPROCS;
+				int recipient2 = (n + 2) % NPROCS;
 				snprintf(buf, sizeof(buf), "%d", logical_clock);
 				write(pipefd[recipient1][1], buf, MESSAGE_SIZE);
 				write(pipefd[recipient2][1], buf, MESSAGE_SIZE);
-				sprintf(stderr, "EVENT[%ld]: Proc %d sent to both procs %d and %d the current logical clock time %d\n", time(), n, recpient1, recipient2, logical_clock);
+				fprintf(stdout, "EVENT[%ld]: Proc %d sent to both procs %d and %d the current logical clock time %d\n", time(0), n, recipient1, recipient2, logical_clock);
 			}
 			else
 			{
-				sprintf(stderr, "EVENT[%ld]: Internal event code %d at the logical clock time %d\n", time(), spinner, logical_clock);
+				fprintf(stdout, "EVENT[%ld]: Internal event code %d at the logical clock time %d\n", time(0), spinner, logical_clock);
 			}
 		}
 		fprintf(stderr, "Time is now %ld\n", time(0));
