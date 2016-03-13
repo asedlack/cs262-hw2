@@ -43,6 +43,36 @@ int lclock(int n, int hz, int pipefd[][2], int seed)
 			fprintf(stderr, "Just read %d\n", received[queue_end]);
 			queue_end ++;
 		}
+
+		if (queue_start < queue_end)
+		{
+			//take message off queue, update lc, log message recieve, log global time, log queue size, and log lc time
+		}
+		else
+		{
+			logical_clock++;
+			int spinner = (rand() % 10) + 1;
+			if (spinner == 1 || spinner == 2)
+			{
+				int recipient = (n + spinner) % NPROCS;
+				snprintf(buf, sizeof(buf), "%d", logical_clock);
+				write(pipefd[recipient][1], buf, MESSAGE_SIZE);
+				sprintf(stderr, "EVENT[%ld]: Proc %d sent to proc %d the current logical clock time %d\n", time(), n, recipient, logical_clock);
+			}
+			else if (spinner == 3)
+			{
+				int recipient1 = (n + 1) % NPROCS;
+				int recpiient2 = (n + 2) % NPROCS;
+				snprintf(buf, sizeof(buf), "%d", logical_clock);
+				write(pipefd[recipient1][1], buf, MESSAGE_SIZE);
+				write(pipefd[recipient2][1], buf, MESSAGE_SIZE);
+				sprintf(stderr, "EVENT[%ld]: Proc %d sent to both procs %d and %d the current logical clock time %d\n", time(), n, recpient1, recipient2, logical_clock);
+			}
+			else
+			{
+				sprintf(stderr, "EVENT[%ld]: Internal event code %d at the logical clock time %d\n", time(), spinner, logical_clock);
+			}
+		}
 		fprintf(stderr, "Time is now %ld\n", time(0));
 		usleep(1000000 / hz);
 	}
