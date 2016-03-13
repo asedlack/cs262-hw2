@@ -6,7 +6,7 @@
 #include <fcntl.h>
 
 #define NPROCS 3
-#define NSEC 4
+#define NSEC 30
 #define MAX_CLOCK_FREQUENCY 6
 #define MESSAGE_SIZE 8
 /**
@@ -24,14 +24,13 @@ int lclock(int n, int hz, int pipefd[][2], int seed)
 	sprintf(log_filename, "proc%d.log", n);
 	FILE * log = fopen(log_filename, "w");
 	
-	dup2(fileno(log), STDIN_FILENO);
+	dup2(fileno(log), STDOUT_FILENO);
 	dup2(fileno(log), STDERR_FILENO);
 
 	time_t start_time = time(0);
 	int logical_clock = 0;
 
-	fprintf(stderr, "Machine %d has PID %d and clockspeed %d Hz\n", n, getpid(), hz);
-	fprintf(stderr, "The current time is %ld\n", time(0));
+	fprintf(stderr, "===== Machine %d has PID %d and clockspeed %d Hz =====\n", n, getpid(), hz);
 
 	char buf[MESSAGE_SIZE];
 
@@ -39,7 +38,7 @@ int lclock(int n, int hz, int pipefd[][2], int seed)
 	{
 		while(read(pipefd[n][0], buf, MESSAGE_SIZE) != -1){
 			received[queue_end] = atoi(buf);
-			fprintf(stderr, "Just read %d\n", received[queue_end]);
+			//fprintf(stdout, "Just read %d\n", received[queue_end]);
 			queue_end ++;
 		}
 
@@ -50,7 +49,7 @@ int lclock(int n, int hz, int pipefd[][2], int seed)
 			logical_clock++;
 			queue_start++;
 			int queue_size = queue_end - queue_start;
-			fprintf(stdout, "EVENT[%ld]: Proc %d just recieved a message.  The new logical clock is %d and the queue size is now %d\n", time(0), n, logical_clock, queue_size);
+			fprintf(stdout, "EVENT[T: %ld][LC: %d] - RECIEVE: Proc %d. Queue size is %d\n", time(0), logical_clock, n, queue_size);
 		}
 		else
 		{
@@ -61,7 +60,7 @@ int lclock(int n, int hz, int pipefd[][2], int seed)
 				int recipient = (n + spinner) % NPROCS;
 				snprintf(buf, sizeof(buf), "%d", logical_clock);
 				write(pipefd[recipient][1], buf, MESSAGE_SIZE);
-				fprintf(stdout, "EVENT[%ld]: Proc %d sent to proc %d the current logical clock time %d\n", time(0), n, recipient, logical_clock);
+				fprintf(stdout, "EVENT[T: %ld][LC: %ld] - SEND: Proc %d to proc %d\n", time(0), logical_clock, n, recipient);
 			}
 			else if (spinner == 3)
 			{
@@ -70,14 +69,13 @@ int lclock(int n, int hz, int pipefd[][2], int seed)
 				snprintf(buf, sizeof(buf), "%d", logical_clock);
 				write(pipefd[recipient1][1], buf, MESSAGE_SIZE);
 				write(pipefd[recipient2][1], buf, MESSAGE_SIZE);
-				fprintf(stdout, "EVENT[%ld]: Proc %d sent to both procs %d and %d the current logical clock time %d\n", time(0), n, recipient1, recipient2, logical_clock);
+				fprintf(stdout, "EVENT[T: %ld][LC: %ld] - SEND: Proc %d to procs %d and %d\n", time(0), logical_clock, n, recipient1, recipient2);
 			}
 			else
 			{
-				fprintf(stdout, "EVENT[%ld]: Internal event code %d at the logical clock time %d\n", time(0), spinner, logical_clock);
+				fprintf(stdout, "EVENT[T: %ld][LC: %ld] - INTERNAL EVENT: Code %d\n", time(0), logical_clock, spinner);
 			}
 		}
-		fprintf(stderr, "Time is now %ld\n", time(0));
 		usleep(1000000 / hz);
 	}
 
@@ -109,7 +107,6 @@ int main (int argc, char** argv) // Return -1 on error
 		fcntl(pipefd[1][n], F_SETFL, flags);
  
 		hz[n] = (rand() % MAX_CLOCK_FREQUENCY) + 1;
-		fprintf(stderr, "Pipe %d read is %d and write is %d\n", n, pipefd[n][0], pipefd[n][1]);
 
 		child_seeds[n] = (int) rand();
 	}
@@ -117,13 +114,12 @@ int main (int argc, char** argv) // Return -1 on error
 	//Now we'll initiallize each proc before handing it off to clock()
 	for (n = 0; n < NPROCS; n++)
 	{
-		fprintf(stderr, "Now runing on number: %d\n", n);
+		fprintf(stderr, "INIT: Number %d\n", n);
 		
 		pid = fork();
 
 		if (pid == 0) // I'm a child
 		{
-			fprintf(stderr, "New proc with pid %ld\n", (long) getpid());
 			
 
 			//close uneccesaary connections
